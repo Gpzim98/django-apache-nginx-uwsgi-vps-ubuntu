@@ -142,3 +142,34 @@ sudo systemctl enable uwsgi_gestao_rh.service
 journalctl -u uwsgi_gestao_rh.service
 
 ```
+
+## Setup Apache2 with Nginx as a reverse Proxy
+
+```sudo apt-get install apache2```
+
+```
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod proxy_balancer
+sudo a2enmod lbmethod_byrequests
+```
+
+* disable nginx default symlink to open port 80
+
+```sudo systemctl restart apache2```
+
+* Creating the Vhost
+
+/etc/apache2/sites-available
+
+```
+<VirtualHost *:80>
+    ServerName 52.16.70.162
+    ProxyPass / http://127.0.0.1:8000/
+    ProxyPassReverse / http://127.0.0.1:8000/
+</VirtualHost>
+```
+
+* Enable symlink on site-enable
+
+sudo ln -s /etc/apache2/sites-available/my_confile.conf /etc/apache2/sites/enabled                 
