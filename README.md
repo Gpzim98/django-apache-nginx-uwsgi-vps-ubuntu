@@ -227,3 +227,5 @@ sudo vim django_vps.conf
 sudo ln -s /etc/apache2/sites-available/django_vps.conf /etc/apach
 e2/sites-enabled/
 ```
+
+* Edit default vhost to your extra website
