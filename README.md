@@ -2,6 +2,9 @@
 Tutorial on how to deploy a Django application on Linux VPS with Apache, NGINX and uWSGI
 
 ## Preparing the environmnet
+```
+sudo apt-get install python3-venv
+```
 * Create virtual env
 
 ```python3 -m venv venv```
@@ -9,6 +12,18 @@ Tutorial on how to deploy a Django application on Linux VPS with Apache, NGINX a
 * Clone repository
 
 ```git clone your-url.git```
+
+* Install requirementst
+``` pip install requirements.txt```
+
+* Run the collectstatic command 
+``` python manage.py collectstatic ```
+
+* Create the database 
+``` python manage.py migrate ```
+
+* Create a superuser 
+``` python manage.py createsuperuser ```
 
  ## Setup static and media files
  
@@ -28,8 +43,12 @@ Tutorial on how to deploy a Django application on Linux VPS with Apache, NGINX a
  ## Install and setup 
  * Install uwsgi on your virtual environment
  
- ```pip install uwsgi```
-
+ ```
+ sudo apt-get install python3.6-dev
+ sudo apt-get install build-essential libssl-dev libffi-dev python-dev
+ pip install wheel
+ pip install uwsgi
+```
 * Install and start Nginx
 
 ```
@@ -38,9 +57,34 @@ sudo /etc/init.d/nginx start
 ```
 ## Configure Nginx
 
+* Create the file uwsgi_params on your project path
+```
+vim uwsgi_params
+
+---- file content -----
+
+uwsgi_param  QUERY_STRING       $query_string;
+uwsgi_param  REQUEST_METHOD     $request_method;
+uwsgi_param  CONTENT_TYPE       $content_type;
+uwsgi_param  CONTENT_LENGTH     $content_length;
+
+uwsgi_param  REQUEST_URI        $request_uri;
+uwsgi_param  PATH_INFO          $document_uri;
+uwsgi_param  DOCUMENT_ROOT      $document_root;
+uwsgi_param  SERVER_PROTOCOL    $server_protocol;
+uwsgi_param  REQUEST_SCHEME     $scheme;
+uwsgi_param  HTTPS              $https if_not_empty;
+
+uwsgi_param  REMOTE_ADDR        $remote_addr;
+uwsgi_param  REMOTE_PORT        $remote_port;
+uwsgi_param  SERVER_PORT        $server_port;
+uwsgi_param  SERVER_NAME        $server_name;
+```
+
+* Create NGINX config file at /etc/nginx/sites/available
 ```
 upstream django {
-    server unix:///path/to/your/mysite/mysite.sock; # for a file socket
+    server unix:///home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/mysite.sock; 
 }
 
 server {
@@ -48,19 +92,19 @@ server {
     server_name example.com;
     charset     utf-8;
 
-    client_max_body_size 75M;   # adjust to taste
+    client_max_body_size 75M; 
 
     location /media  {
-        alias /path/to/your/mysite/media; 
+        alias /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/media; 
     }
 
     location /static {
-        alias /path/to/your/mysite/static;
+        alias /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/static;
     }
 
     location / {
         uwsgi_pass  django;
-        include     /path/to/your/mysite/uwsgi_params; 
+        include     /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/uwsgi_params; 
     }
 }
 ```
@@ -78,13 +122,14 @@ sudo ln -s ~/path/to/your/mysite/mysite_nginx.conf /etc/nginx/sites-enabled/
 
 * Create the ini file
 
-```[uwsgi]
-chdir           = /home/ubuntu/gestao_rh
-module          = gestao_rh.wsgi
+```
+[uwsgi]
+chdir           = /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu
+module          = django_vps.wsgi
 home            = /home/ubuntu/venv
 master          = true
 processes       = 10
-socket          = /home/ubuntu/gestao_rh/mysite.sock
+socket          = /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/mysite.sock
 vacuum          = true
 chmod-socket    = 666
 ```
@@ -97,7 +142,7 @@ chmod-socket    = 666
 ```
 sudo mkdir /etc/uwsgi
 sudo mkdir /etc/uwsgi/vassals
-sudo ln -s /path/to/your/mysite/mysite_uwsgi.ini /etc/uwsgi/vassals/
+sudo ln -s /home/ubuntu/django-apache-nginx-uwsgi-vps-ubuntu/mysite_uwsgi.ini /etc/uwsgi/vassals/
 uwsgi --emperor /etc/uwsgi/vassals --uid www-data --gid www-data
 ```
 ## Setup systemctl to start on boot
@@ -105,14 +150,14 @@ uwsgi --emperor /etc/uwsgi/vassals --uid www-data --gid www-data
 ```
 https://uwsgi-docs.readthedocs.io/en/latest/Systemd.html
 
-/etc/systemd/system/
+cd /etc/systemd/system/
 
-sudo vim uwsgi_gestao_rh.service
+sudo vim djangovps.service
 
 
 ======
 [Unit]
-Description=uWSGI Emperor
+Description=Django VPS uWSGI Emperor
 After=syslog.target
 
 [Service]
@@ -129,38 +174,45 @@ User=ubuntu
 WantedBy=multi-user.target
 ======
 
-sudo chmod 664 /etc/systemd/system/uwsgi_gestao_rh.service
+sudo chmod 664 /etc/systemd/system/djangovps.service
 
 sudo systemctl daemon-reload
 
-sudo systemctl enable uwsgi_gestao_rh.service
+sudo systemctl enable djangovps.service
 
- sudo systemctl start uwsgi_gestao_rh.service
+ sudo systemctl start djangovps.service
 
- sudo systemctl status uwsgi_gestao_rh.service
+ sudo systemctl status djangovps.service
 
-journalctl -u uwsgi_gestao_rh.service
+journalctl -u djangovps.service
 
 ```
 
 ## Setup Apache2 with Nginx as a reverse Proxy
 
-```sudo apt-get install apache2```
+* disable nginx default symlink to open port 80
+``` 
+ cd /etc/nginx/sites-enabled/
+ sudo rm -rf default
+ sudo /etc/init.d/nginx restart
+```
 
 ```
+sudo apt-get install apache2
 sudo a2enmod proxy
 sudo a2enmod proxy_http
 sudo a2enmod proxy_balancer
 sudo a2enmod lbmethod_byrequests
 ```
 
-* disable nginx default symlink to open port 80
-
 ```sudo systemctl restart apache2```
 
 * Creating the Vhost
 
-/etc/apache2/sites-available
+``` 
+cd /etc/apache2/sites-available
+sudo vim django_vps.conf
+```
 
 ```
 <VirtualHost *:80>
@@ -171,5 +223,7 @@ sudo a2enmod lbmethod_byrequests
 ```
 
 * Enable symlink on site-enable
-
-sudo ln -s /etc/apache2/sites-available/my_confile.conf /etc/apache2/sites/enabled                 
+```
+sudo ln -s /etc/apache2/sites-available/django_vps.conf /etc/apach
+e2/sites-enabled/
+```
