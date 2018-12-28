@@ -14,7 +14,7 @@ sudo apt-get install python3-venv
 ```git clone your-url.git```
 
 * Install requirementst
-``` pip install requirements.txt```
+``` pip install -r requirements.txt```
 
 * Run the collectstatic command 
 ``` python manage.py collectstatic ```
