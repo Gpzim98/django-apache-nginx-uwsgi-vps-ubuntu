@@ -229,3 +229,33 @@ e2/sites-enabled/
 ```
 
 * Edit default vhost to your extra website
+
+## Setup Django to user Postgres DB
+```
+sudo apt-get install python-pip python-dev libpq-dev postgresql postgresql-contrib
+adduser <username>
+sudo su - postgres
+psql
+\password
+\q
+createuser --interactive
+createdb <database name>
+psql
+ALTER DATABASE <database name> OWNER TO <role name>;
+ALTER USER <username> WITH PASSWORD '<new password>';
+add psycopg2 on requirements.txt
+push + pull
+install requirements.txt
+```
+### Consultando o banco de dados
+```
+sudo su
+su postgres
+psql
+\list
+\c djangodb
+\dt ( show tables )
+select * from auth_user;
+\q
+exit
+```
