@@ -194,7 +194,8 @@ journalctl -u djangovps.service
 ``` 
  cd /etc/nginx/sites-enabled/
  sudo rm -rf default
- sudo /etc/init.d/nginx restart
+ sudo systemctl stop djangovps.service
+ sudo /etc/init.d/nginx stop
 ```
 
 ```
